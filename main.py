@@ -2,11 +2,14 @@ from typing import Type
 
 from fastapi import Depends, FastAPI
 from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 
 from vectordb import QdrantDB, VectorDatabase
 
 # Initializations
 app = FastAPI()
+
+app.mount("/images", StaticFiles(directory="data/Food Images/Food Images"), name="images")
 
 # Define the collection name
 collection_name = "recipe_title_collection"

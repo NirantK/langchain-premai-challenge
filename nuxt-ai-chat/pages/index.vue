@@ -27,6 +27,8 @@
 		scrollToEnd();
 		message.value = '';
 
+		console.log("front end messages", messages)
+
 		const res = await fetch(`/api/chat`, {
 			body: JSON.stringify(messages.value.slice(1)),
 			method: 'post'
@@ -65,7 +67,18 @@
 					<div v-for="(message, i) in messages" :key="i" class="flex flex-col p-4">
 						<div v-if="message.role === 'AI'" class="pr-8 mr-auto">
 							<div class="p-2 mt-1 text-sm text-gray-700 bg-gray-200 rounded-lg text-smp-2">
-								{{ message.message }}
+								<!-- {{ message.message }} -->
+								<div v-if="message.message.result">
+									<div v-for="result in message.message.result">
+										<p><b>Title: {{ result.payload.title }}</b></p>
+										<p>Recipe: {{ result.payload.recipe }}</p>
+										<p>Image<img :src="`http://localhost:8000/images/${result.payload.image}`"></p>
+										
+									</div>
+								</div>
+								<div v-else>
+									{{ message.message }}
+								</div>
 							</div>
 						</div>
 						<div v-else class="pl-8 ml-auto">
