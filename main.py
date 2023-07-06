@@ -56,6 +56,11 @@ async def upsert():
 async def health():
     return {"status": "ok"}
 
+@app.post("/delete")
+async def delete():
+    vector_db = get_vector_db()
+    return vector_db.delete_index()
+
 
 # @app.on_event("shutdown")
 # async def shutdown():

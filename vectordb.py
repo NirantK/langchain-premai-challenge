@@ -69,13 +69,14 @@ class QdrantDB(VectorDatabase):
             logger.info(f"Qdrant collection {self.collection_name} created")
 
     def upsert(self) -> str:
-        logger.info(f"total vectors from upsert: {len(self.dataset)}")
+        logger.info(f"total vectors from upsert: {self.dataframe.shape[0]}")
         tokenizer = AutoTokenizer.from_pretrained(
             "sentence-transformers/all-MiniLM-L6-v2"
         )
 
-        # computer the tokenized length of each instruction
-        self.dataframe["Instructions_tokenized_length"] = self.datadrame[
+        logger.info("Computing the tokenized length of each instruction")
+        # compute the tokenized length of each instruction
+        self.dataframe["Instructions_tokenized_length"] = self.dataframe[
             "Instructions"
         ].apply(lambda x: len(tokenizer.tokenize(str(x))))
 
@@ -84,6 +85,7 @@ class QdrantDB(VectorDatabase):
             (self.dataframe["Instructions_tokenized_length"] < 2000)
             & (self.dataframe["Instructions_tokenized_length"] > 1)
         ]
+        logger.info(f"Total vectors after filtering: {self.dataframe.shape[0]}")
 
         # vector and payloads as points for qdrant
         all_points = []
@@ -103,6 +105,7 @@ class QdrantDB(VectorDatabase):
                     },
                 )
             )
+        logger.info("All points created")
 
         # do a simple batch upsert of all the points in tranches of 1000
         for i in range(0, len(all_points), 1000):
@@ -137,4 +140,6 @@ class QdrantDB(VectorDatabase):
 
     def delete_index(self) -> str:
         self.client.delete_collection(collection_name=self.collection_name)
+        logger.info(f"Qdrant collection {self.collection_name} deleted")
+        logger.info(self.client.get_collections())
         return "Index deleted"
