@@ -1,13 +1,23 @@
 export default defineEventHandler(async (event) => {
 	const config = useRuntimeConfig();
 	let messages = [];
-	const previosMessages = await readBody(event);
-	console.log('previosMessages', previosMessages);
-	messages = messages.concat(previosMessages);
-	let prompt =
-		messages.map((message) => `${message.role}: ${message.message}`).join('\n') + `\nAI:`;
-	console.log('prompt', prompt);
-	console.log("messages from ssr", messages)
+	const bodyData = await readBody(event);
+	console.log('body_data', bodyData);
+	// Check if body is empty. if not empty, then read the body's last array element. 
+	// if the last element(an object) has a message property, then,
+	// read the message property and assign it to the qdrant_prompt variable.
+	let qdrantPrompt = '';
+	if (bodyData.length > 0 && bodyData.slice(-1)[0].message) {
+		qdrantPrompt = bodyData.slice(-1)[0].message;
+	}
+	console.log('qdrant_prompt', qdrantPrompt);
+
+	// const previosMessages = await readBody(event);
+	// messages = messages.concat(previosMessages);
+	// let prompt =
+	// 	messages.map((message) => `${message.role}: ${message.message}`).join('\n') + `\nAI:`;
+	// console.log('prompt', prompt);
+	// console.log("messages from ssr", messages);
 	// const req = await fetch('https://api.openai.com/v1/completions', {
 	// 	method: 'POST',
 	// 	headers: {
@@ -32,18 +42,28 @@ export default defineEventHandler(async (event) => {
 	// 	message: result.text
 	// };
 
-	const req = await fetch('http://localhost:8000/ask', {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json'
+	try {
+		const req = await fetch('http://localhost:8000/ask', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
 			},
-		body: JSON.stringify({
-			query: "any recipe on chocolate cake"
-		})
+			body: JSON.stringify({
+				query: qdrantPrompt
+			})
 		});
-	const res = await req.json();
-	// console.log('response from qdrant', res);
-	return {
-		message: res
+
+		const res = await req.json();
+		console.log('response from qdrant', res);
+		return {
+			message: res
+		};
+	} catch (error) {
+		// Handle and log any errors
+		console.error('Error:', error);
+		// Return an appropriate error response
+		return {
+			message: `An error occurred while trying to fetch data from the API: ${error}`
+		};
 	}
 });
