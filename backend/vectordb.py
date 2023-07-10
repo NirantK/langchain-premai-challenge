@@ -10,6 +10,8 @@ from qdrant_client.http import models
 from qdrant_client.http.models import (CollectionStatus, Distance, PointStruct,
                                        UpdateStatus, VectorParams)
 from transformers import AutoTokenizer
+from langchain.schema import Document
+from langchain.vectorstores import Qdrant
 
 IP_ADDRESS = "http://3.91.215.30"
 API_BASE = "http://3.91.215.30:8000"
@@ -83,6 +85,11 @@ class QdrantDB(VectorDatabase):
             "Instructions"
         ].apply(lambda x: len(tokenizer.tokenize(str(x))))
 
+        logger.info("Filtering the dataset")
+
+        # drop all NaN values
+        self.dataframe = self.dataframe.dropna()
+
         # drop the rows where the Instructions_tokenized_length is greater than 2000 and greater than 1
         self.dataframe = self.dataframe[
             (self.dataframe["Instructions_tokenized_length"] < 2000)
@@ -91,34 +98,18 @@ class QdrantDB(VectorDatabase):
         logger.info(f"Total vectors after filtering: {self.dataframe.shape[0]}")
 
         # vector and payloads as points for qdrant
-        all_points = []
+        docs=[]
 
-        # iterate over the rows of the dataframe
         for index, row in self.dataframe.iterrows():
-            vector_id = uuid.uuid4().hex
-            vector_embedding = self.embeddings.embed_query(row["Title"])
-            all_points.append(
-                PointStruct(
-                    id=vector_id,
-                    vector=vector_embedding,
-                    payload={
-                        "title": row["Title"],
-                        "recipe": row["Instructions"],
-                        "image": f"{row['Image_Name']}.jpg",
-                    },
-                )
-            )
-        logger.info("All points created")
-
-        # do a simple batch upsert of all the points in tranches of 1000
-        for i in range(0, len(all_points), 1000):
-            logger.info("Upserting points from ", i, " to ", i + 1000)
-            operation_info = self.client.upsert(
-                collection_name=self.collection_name,
-                wait=True,
-                points=all_points[i : i + 1000],
-            )
-            assert operation_info.status == UpdateStatus.COMPLETED
+            docs.append(Document(
+                        page_content=row["Title"], metadata={"recipe": row["Instructions"], "image": f"{row['Image_Name']}.jpg"}
+                    ))
+        self.vectorstore = Qdrant.from_documents(
+            docs,
+            self.embeddings,
+            url="http://localhost:6333",  # Qdrant gRPC API endpoint
+            collection_name="new_recipe_collection",
+        )
 
         return "Upserted successfully"
 
