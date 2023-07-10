@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
 	// };
 
 	try {
-		const req = await fetch('https://wispy-silence-8545.fly.dev/ask', {
+		const req = await fetch('http://3.91.215.30:3000/ask', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
