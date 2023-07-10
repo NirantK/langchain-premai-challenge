@@ -12,7 +12,7 @@ app = FastAPI()
 app.mount("/images", StaticFiles(directory="data/Food Images/Food Images"), name="images")
 
 # Define the collection name
-collection_name = "recipe_title_collection"
+collection_name = "langchain_recipe_title_collection"
 vector_db = None
 
 

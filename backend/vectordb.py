@@ -1,24 +1,34 @@
 import os
 import uuid
 from typing import List
-
+import json
 import pandas as pd
+from fastapi.responses import JSONResponse
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.schema import Document
+from langchain.vectorstores import Qdrant
 from loguru import logger
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from qdrant_client.http.models import (CollectionStatus, Distance, PointStruct,
                                        UpdateStatus, VectorParams)
 from transformers import AutoTokenizer
+from fastapi.encoders import jsonable_encoder
 
 IP_ADDRESS = "http://3.91.215.30"
-API_BASE = "http://3.91.215.30:8000"
+OPENAI_API_BASE = "http://3.91.215.30:8111/v1"
 EMBEDDING_ADDRESS = "http://3.91.215.30:8444/v1"
+
+# IP_ADDRESS = "http://localhost"
+# OPENAI_API_BASE = "http://localhost:8111/v1"
+# EMBEDDING_ADDRESS = "http://localhost:8444/v1"
 class VectorDatabase:
     """VectorDatabase class initializes the Vector Database index_name and loads the dataset
     for the usage of the subclasses."""
 
-    def __init__(self, collection_name: str, top_k: int = 3):
+    def __init__(self, collection_name: str, top_k: int = 2):
         self.collection_name = collection_name
         logger.info(f"Index name: {self.collection_name} initialized")
         # Load the dataset
@@ -32,7 +42,6 @@ class VectorDatabase:
         # embedding config - using All MiniLM L6 v2
         os.environ["OPENAI_API_KEY"] = "random-string"
         self.embeddings = OpenAIEmbeddings(openai_api_base=f"{EMBEDDING_ADDRESS}")
-        # self.embeddings =  OpenAIEmbeddings(openai_api_base=f"http://localhost:8444/v1")
         logger.info("OpenAI Embeddings initialized")
 
     def upsert(self) -> str:
@@ -40,7 +49,6 @@ class VectorDatabase:
 
     def query(self, query_embedding: List[float]) -> dict:
         raise NotImplementedError
-
 
 class QdrantDB(VectorDatabase):
     """QdrantDB class is a subclass of VectorDatabase that
@@ -70,6 +78,9 @@ class QdrantDB(VectorDatabase):
                 ),
             )
             logger.info(f"Qdrant collection {self.collection_name} created")
+    
+        # VectorStore for RetrievalQA
+        self.vectorstore = Qdrant(client=self.client, collection_name=self.collection_name, embeddings=self.embeddings)
 
     def upsert(self) -> str:
         logger.info(f"total vectors from upsert: {self.dataframe.shape[0]}")
@@ -83,6 +94,11 @@ class QdrantDB(VectorDatabase):
             "Instructions"
         ].apply(lambda x: len(tokenizer.tokenize(str(x))))
 
+        logger.info("Filtering the dataset")
+
+        # drop all NaN values
+        self.dataframe = self.dataframe.dropna()
+
         # drop the rows where the Instructions_tokenized_length is greater than 2000 and greater than 1
         self.dataframe = self.dataframe[
             (self.dataframe["Instructions_tokenized_length"] < 2000)
@@ -91,34 +107,20 @@ class QdrantDB(VectorDatabase):
         logger.info(f"Total vectors after filtering: {self.dataframe.shape[0]}")
 
         # vector and payloads as points for qdrant
-        all_points = []
+        docs=[]
 
-        # iterate over the rows of the dataframe
         for index, row in self.dataframe.iterrows():
-            vector_id = uuid.uuid4().hex
-            vector_embedding = self.embeddings.embed_query(row["Title"])
-            all_points.append(
-                PointStruct(
-                    id=vector_id,
-                    vector=vector_embedding,
-                    payload={
-                        "title": row["Title"],
-                        "recipe": row["Instructions"],
-                        "image": f"{row['Image_Name']}.jpg",
-                    },
-                )
-            )
-        logger.info("All points created")
-
-        # do a simple batch upsert of all the points in tranches of 1000
-        for i in range(0, len(all_points), 1000):
-            logger.info("Upserting points from ", i, " to ", i + 1000)
-            operation_info = self.client.upsert(
-                collection_name=self.collection_name,
-                wait=True,
-                points=all_points[i : i + 1000],
-            )
-            assert operation_info.status == UpdateStatus.COMPLETED
+            docs.append(Document(
+                        page_content=row["Title"], metadata={"recipe": row["Instructions"], "image": f"{row['Image_Name']}.jpg"}
+                    ))
+            
+        # upsert the vectors and payloads into the qdrant collection
+        self.vectorstore = Qdrant.from_documents(
+            docs,
+            self.embeddings,
+            url=f"{IP_ADDRESS}:6333",  # Qdrant gRPC API endpoint
+            collection_name=self.collection_name,
+        )
 
         return "Upserted successfully"
 
@@ -133,13 +135,18 @@ class QdrantDB(VectorDatabase):
         #     "status": "ok",
         #     "time": 0.000055785,
         # }
-        query_embedding = self.embeddings.embed_query(query)
-        return self.client.search(
-            collection_name=self.collection_name,
-            query_vector=query_embedding,
-            limit=self.top_k,
-            with_payload=True,
+        
+
+        # chat completion llm
+        llm = ChatOpenAI(
+            openai_api_base=f"{OPENAI_API_BASE}", temperature=0.2, max_tokens=128
         )
+
+        # Using Vicuna via Premai app 
+        qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.vectorstore.as_retriever(), return_source_documents=True)
+
+        result = qa({"query": query})        
+        return JSONResponse(jsonable_encoder(result))
 
     def delete_index(self) -> str:
         self.client.delete_collection(collection_name=self.collection_name)
