@@ -16,11 +16,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN apt-get update && \
     apt-get install -y wget sudo
 
-# Download and execute the installation script
-RUN wget -q https://get.prem.ninja/install.sh -O install.sh
-
-RUN sudo bash ./install.sh
-
 COPY . ./
 
 EXPOSE 8080

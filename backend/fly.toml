@@ -1,10 +1,10 @@
-# fly.toml app configuration file generated for empty-fire-5577 on 2023-07-07T15:21:01+05:30
+# fly.toml app configuration file generated for wispy-silence-8545 on 2023-07-10T12:30:42+05:30
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = "empty-fire-5577"
-primary_region = "ams"
+app = "wispy-silence-8545"
+primary_region = "lax"
 
 [http_service]
   internal_port = 8080
