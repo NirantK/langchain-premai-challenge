@@ -9,9 +9,12 @@ ENV APP_HOME /app
 WORKDIR $APP_HOME
 COPY requirements.txt /app/requirements.txt
 
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN wget -q https://get.prem.ninja/install.sh -O install.sh; sudo bash ./install.sh
+# Install wget and sudo
+RUN apt-get update && \
+    apt-get install -y wget sudo
 
 COPY . ./
 
