@@ -65,10 +65,7 @@
 
 		loading.value = false;
 		scrollToEnd();
-	};
-</script>
-
-<script>
+};
 export default {
     data() {
         return {
@@ -90,7 +87,9 @@ export default {
 
     }
 }
+
 </script>
+
 
 <template>
 	<div class="max-w-xl mx-auto text-black">
