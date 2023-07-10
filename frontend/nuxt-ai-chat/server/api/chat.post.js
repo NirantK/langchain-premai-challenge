@@ -43,7 +43,7 @@ export default defineEventHandler(async (event) => {
 	// };
 
 	try {
-		const req = await fetch('http://localhost:8000/ask', {
+		const req = await fetch('https://wispy-silence-8545.fly.dev/ask', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json'
@@ -53,10 +53,11 @@ export default defineEventHandler(async (event) => {
 			})
 		});
 
-		const res = await req.json();
-		console.log('response from qdrant', res);
+		const response = await req.json();
+		const response_body = JSON.parse(response.result.body);
+		console.log('response from qdrant', response_body);
 		return {
-			message: res
+			message: response_body
 		};
 	} catch (error) {
 		// Handle and log any errors

@@ -28,7 +28,7 @@ class VectorDatabase:
     """VectorDatabase class initializes the Vector Database index_name and loads the dataset
     for the usage of the subclasses."""
 
-    def __init__(self, collection_name: str, top_k: int = 3):
+    def __init__(self, collection_name: str, top_k: int = 2):
         self.collection_name = collection_name
         logger.info(f"Index name: {self.collection_name} initialized")
         # Load the dataset
@@ -78,6 +78,9 @@ class QdrantDB(VectorDatabase):
                 ),
             )
             logger.info(f"Qdrant collection {self.collection_name} created")
+    
+        # VectorStore for RetrievalQA
+        self.vectorstore = Qdrant(client=self.client, collection_name=self.collection_name, embeddings=self.embeddings)
 
     def upsert(self) -> str:
         logger.info(f"total vectors from upsert: {self.dataframe.shape[0]}")
@@ -132,15 +135,12 @@ class QdrantDB(VectorDatabase):
         #     "status": "ok",
         #     "time": 0.000055785,
         # }
-        self.vectorstore = Qdrant(client=self.client, collection_name=self.collection_name, embeddings=self.embeddings)
+        
 
         # chat completion llm
         llm = ChatOpenAI(
             openai_api_base=f"{OPENAI_API_BASE}", temperature=0.2, max_tokens=128
         )
-
-        # Using OpenAI directly
-        # qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=qdrant_docsearch.as_retriever())
 
         # Using Vicuna via Premai app 
         qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.vectorstore.as_retriever(), return_source_documents=True)

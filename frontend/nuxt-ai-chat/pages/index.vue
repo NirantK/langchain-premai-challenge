@@ -69,11 +69,19 @@
 							<div class="p-2 mt-1 text-sm text-gray-700 bg-gray-200 rounded-lg text-smp-2">
 								<!-- {{ message.message }} -->
 								<div v-if="message.message.result">
-									<div v-for="result in message.message.result">
+									<!-- <div v-for="result in message.message.result">
 										<p><b>Title: {{ result.payload.title }}</b></p>
 										<p>Recipe: {{ result.payload.recipe }}</p>
 										<p>Image<img :src="`http://localhost:8000/images/${result.payload.image}`"></p>
 										
+									</div> -->
+									{{ message.message.result }}
+									<div v-if="message.message.source_documents">
+										<div v-for="document in message.message.source_documents">
+											<p><b>Title: {{ document.page_content }}</b></p>
+											<p>Recipe: {{ document.metadata.recipe }}</p>
+											<p>Image<img :src="`https://wispy-silence-8545.fly.dev/images/${document.metadata.image}`"></p>
+										</div>
 									</div>
 								</div>
 								<div v-else>
