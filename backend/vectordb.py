@@ -3,19 +3,25 @@ import uuid
 from typing import List
 
 import pandas as pd
+from fastapi.responses import JSONResponse
+from langchain.chains import RetrievalQA
+from langchain.chat_models import ChatOpenAI
 from langchain.embeddings import OpenAIEmbeddings
+from langchain.schema import Document
+from langchain.vectorstores import Qdrant
 from loguru import logger
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from qdrant_client.http.models import (CollectionStatus, Distance, PointStruct,
                                        UpdateStatus, VectorParams)
 from transformers import AutoTokenizer
-from langchain.schema import Document
-from langchain.vectorstores import Qdrant
 
-IP_ADDRESS = "http://3.91.215.30"
-API_BASE = "http://3.91.215.30:8000"
-EMBEDDING_ADDRESS = "http://3.91.215.30:8444/v1"
+# IP_ADDRESS = "http://3.91.215.30"
+IP_ADDRESS = "http://localhost"
+# OPENAI_API_BASE = "http://3.91.215.30:8111/v1"
+OPENAI_API_BASE = "http://localhost:8111/v1"
+# EMBEDDING_ADDRESS = "http://3.91.215.30:8444/v1"
+EMBEDDING_ADDRESS = "http://localhost:8444/v1"
 class VectorDatabase:
     """VectorDatabase class initializes the Vector Database index_name and loads the dataset
     for the usage of the subclasses."""
@@ -34,7 +40,6 @@ class VectorDatabase:
         # embedding config - using All MiniLM L6 v2
         os.environ["OPENAI_API_KEY"] = "random-string"
         self.embeddings = OpenAIEmbeddings(openai_api_base=f"{EMBEDDING_ADDRESS}")
-        # self.embeddings =  OpenAIEmbeddings(openai_api_base=f"http://localhost:8444/v1")
         logger.info("OpenAI Embeddings initialized")
 
     def upsert(self) -> str:
@@ -104,11 +109,13 @@ class QdrantDB(VectorDatabase):
             docs.append(Document(
                         page_content=row["Title"], metadata={"recipe": row["Instructions"], "image": f"{row['Image_Name']}.jpg"}
                     ))
+            
+        # upsert the vectors and payloads into the qdrant collection
         self.vectorstore = Qdrant.from_documents(
             docs,
             self.embeddings,
-            url="http://localhost:6333",  # Qdrant gRPC API endpoint
-            collection_name="new_recipe_collection",
+            url=f"{IP_ADDRESS}:6333",  # Qdrant gRPC API endpoint
+            collection_name=self.collection_name,
         )
 
         return "Upserted successfully"
@@ -124,13 +131,24 @@ class QdrantDB(VectorDatabase):
         #     "status": "ok",
         #     "time": 0.000055785,
         # }
-        query_embedding = self.embeddings.embed_query(query)
-        return self.client.search(
-            collection_name=self.collection_name,
-            query_vector=query_embedding,
-            limit=self.top_k,
-            with_payload=True,
+        self.vectorstore = Qdrant(client=self.client, collection_name=self.collection_name, embeddings=self.embeddings)
+
+        # chat completion llm
+        llm = ChatOpenAI(
+            openai_api_base=f"{OPENAI_API_BASE}", temperature=0.2, max_tokens=128
         )
+
+        # Using OpenAI directly
+        # qa = RetrievalQA.from_chain_type(llm=OpenAI(), chain_type="stuff", retriever=qdrant_docsearch.as_retriever())
+
+        # Using Vicuna via Premai app 
+        qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.vectorstore.as_retriever(), return_source_documents=True)
+
+        result = qa({"query": query})
+
+        print(result)
+        return "hello"
+        # return JSONResponse(content=result)
 
     def delete_index(self) -> str:
         self.client.delete_collection(collection_name=self.collection_name)
