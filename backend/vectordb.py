@@ -11,7 +11,8 @@ from qdrant_client.http.models import (CollectionStatus, Distance, PointStruct,
                                        UpdateStatus, VectorParams)
 from transformers import AutoTokenizer
 
-
+IP_ADDRESS = "http://3.91.215.30"
+API_BASE = "http://3.91.215.30:8000"
 class VectorDatabase:
     """VectorDatabase class initializes the Vector Database index_name and loads the dataset
     for the usage of the subclasses."""
@@ -29,7 +30,7 @@ class VectorDatabase:
 
         # embedding config - using All MiniLM L6 v2
         os.environ["OPENAI_API_KEY"] = "random-string"
-        self.embeddings = OpenAIEmbeddings(openai_api_base="http://localhost:8444/v1")
+        self.embeddings = OpenAIEmbeddings(openai_api_base=f"{API_BASE}/v1")
         logger.info("OpenAI Embeddings initialized")
 
     def upsert(self) -> str:
@@ -50,7 +51,7 @@ class QdrantDB(VectorDatabase):
 
     def __init__(self, collection_name: str):
         super().__init__(collection_name)
-        self.client = QdrantClient("localhost", port=6333)
+        self.client = QdrantClient(IP_ADDRESS, port=6333)
         logger.info(f"QdrantDB initialized with index name: {self.collection_name}")
 
         qdrant_collections = self.client.get_collections()
