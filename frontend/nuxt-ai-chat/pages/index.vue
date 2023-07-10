@@ -69,7 +69,6 @@
 </script>
 
 <template>
-    <meta http-equiv="Content-Security-Policy" content="upgrade-insecure-requests" />
 	<div class="max-w-xl mx-auto text-black">
 		<!-- <a
 			href="https://vercel.com/templates/next.js/blob-sveltekit"
