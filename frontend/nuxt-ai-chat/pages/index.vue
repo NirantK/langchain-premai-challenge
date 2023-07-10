@@ -29,6 +29,22 @@
 
 		console.log("front end messages", messages)
         
+        const qdrantPrompt = messages.value.slice(1)
+
+        const req = await fetch('http://3.91.215.30:3000/ask', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				query: qdrantPrompt
+			})
+		});
+
+		const response = await req.json();
+		const response_body = JSON.parse(response.result.body);
+		console.log('response from qdrant', response_body);
+
 		const res = await fetch(`/api/chat`, {
 			body: JSON.stringify(messages.value.slice(1)),
 			method: 'post'
