@@ -23,12 +23,12 @@
 			role: 'User',
 			message: message.value
 		});
-
+        console.log(messages.value)
 		scrollToEnd();
 		message.value = '';
 
 		console.log("front end messages", messages)
-
+        
 		const res = await fetch(`/api/chat`, {
 			body: JSON.stringify(messages.value.slice(1)),
 			method: 'post'
