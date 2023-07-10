@@ -13,6 +13,7 @@ from transformers import AutoTokenizer
 
 IP_ADDRESS = "http://3.91.215.30"
 API_BASE = "http://3.91.215.30:8000"
+EMBEDDING_ADDRESS = "http://3.91.215.30:8444/v1"
 class VectorDatabase:
     """VectorDatabase class initializes the Vector Database index_name and loads the dataset
     for the usage of the subclasses."""
@@ -30,7 +31,8 @@ class VectorDatabase:
 
         # embedding config - using All MiniLM L6 v2
         os.environ["OPENAI_API_KEY"] = "random-string"
-        self.embeddings = OpenAIEmbeddings(openai_api_base=f"{API_BASE}/v1")
+        self.embeddings = OpenAIEmbeddings(openai_api_base=f"{EMBEDDING_ADDRESS}")
+        # self.embeddings =  OpenAIEmbeddings(openai_api_base=f"http://localhost:8444/v1")
         logger.info("OpenAI Embeddings initialized")
 
     def upsert(self) -> str:
