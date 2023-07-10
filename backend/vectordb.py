@@ -16,12 +16,13 @@ from qdrant_client.http.models import (CollectionStatus, Distance, PointStruct,
                                        UpdateStatus, VectorParams)
 from transformers import AutoTokenizer
 
-# IP_ADDRESS = "http://3.91.215.30"
-IP_ADDRESS = "http://localhost"
-# OPENAI_API_BASE = "http://3.91.215.30:8111/v1"
-OPENAI_API_BASE = "http://localhost:8111/v1"
-# EMBEDDING_ADDRESS = "http://3.91.215.30:8444/v1"
-EMBEDDING_ADDRESS = "http://localhost:8444/v1"
+IP_ADDRESS = "http://3.91.215.30"
+OPENAI_API_BASE = "http://3.91.215.30:8111/v1"
+EMBEDDING_ADDRESS = "http://3.91.215.30:8444/v1"
+
+# IP_ADDRESS = "http://localhost"
+# OPENAI_API_BASE = "http://localhost:8111/v1"
+# EMBEDDING_ADDRESS = "http://localhost:8444/v1"
 class VectorDatabase:
     """VectorDatabase class initializes the Vector Database index_name and loads the dataset
     for the usage of the subclasses."""
@@ -148,6 +149,7 @@ class QdrantDB(VectorDatabase):
 
         print(result)
         return "hello"
+        # print(result)
         # return JSONResponse(content=result)
 
     def delete_index(self) -> str:
