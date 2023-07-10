@@ -1,7 +1,7 @@
 import os
 import uuid
 from typing import List
-
+import json
 import pandas as pd
 from fastapi.responses import JSONResponse
 from langchain.chains import RetrievalQA
@@ -15,6 +15,7 @@ from qdrant_client.http import models
 from qdrant_client.http.models import (CollectionStatus, Distance, PointStruct,
                                        UpdateStatus, VectorParams)
 from transformers import AutoTokenizer
+from fastapi.encoders import jsonable_encoder
 
 IP_ADDRESS = "http://3.91.215.30"
 OPENAI_API_BASE = "http://3.91.215.30:8111/v1"
@@ -48,7 +49,6 @@ class VectorDatabase:
 
     def query(self, query_embedding: List[float]) -> dict:
         raise NotImplementedError
-
 
 class QdrantDB(VectorDatabase):
     """QdrantDB class is a subclass of VectorDatabase that
@@ -145,12 +145,8 @@ class QdrantDB(VectorDatabase):
         # Using Vicuna via Premai app 
         qa = RetrievalQA.from_chain_type(llm=llm, chain_type="stuff", retriever=self.vectorstore.as_retriever(), return_source_documents=True)
 
-        result = qa({"query": query})
-
-        print(result)
-        return "hello"
-        # print(result)
-        # return JSONResponse(content=result)
+        result = qa({"query": query})        
+        return JSONResponse(jsonable_encoder(result))
 
     def delete_index(self) -> str:
         self.client.delete_collection(collection_name=self.collection_name)
